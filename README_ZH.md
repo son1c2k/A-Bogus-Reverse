@@ -1,18 +1,16 @@
-### 0) Intro
-`bdms.js` is a bot defender like most others, it's protected by virtualization (VMP). It's mainly responsible for computing a parameter named `a_bogus` and automatically appending it to HTTP requests. 
+### 0) 介绍
 
-In this post, I'll show you how to strip the VM protection and debug it in Chrome just like plain JS code, then find the algorithm of `a_bogus`.
+`bdms.js` 是一个爬虫防御工具，它本身受虚拟化技术保护（VMP）。它主要职责是生成`a_bogus`参数，并自动插入到HTTP请求当中。 在这篇文章中，我将会展示如何去除VM保护，并且像原生JS代码一样的在Chrome中调试它。
+总体上看，`bdms.js`是一个栈式虚拟机，函数`d`是它的主循环函数，不断的取码-执行。
 
-Overall, `bdms.js` is a stack-based VM, the function `d` is its main loop, running on a two-step fetch-execute cycle. 
-
-### 1) Deobfuscate
-In general, the main loop function has a loop that contains only one switch statement to handle various opcodes, but control-flow obfuscation in function `d` rewrites the switch statement to if-else statements. To analyze the behavior of the opcode handlers, we need a highly readable code, so we need a way to write it back to the switch statement. However, all the predicates can be determined during the static analysis phase, so we can easily rewrite it back. I implemented this in `deobf.js`.
+### 1) 去除混淆
+通常情况下，主循环函数包含一个循环和一个`switch`语句，用于取出`opcode`并找到对应的handler执行它。但是这里有一个控制流混淆，它把`switch`语句替换成了很多`if-else`语句。为了分析handlers的功能，我们需要可读性较高的代码，所以要找到一种还原回`switch`结构的方法。不过，`if-else`所使用的谓词都比较简单，均可以在静态分析阶段被确定下来，所以我们能很容的将其恢复为`switch-case`语句。我在`deobf.js`中实现了这个功能。
 
 ```bash
 node deobf.js "d" "t" bdms.js bdms_out.js
 ```
 
-The first argument is the name of the main loop function, the second is a variable name for each predicate, the last two indicate input and output files.
+第一个参数是主循环函数名，第二个参数为谓词参数名，第三和第四个参数分别为输入文件和输出文件。
 
 ```js
 // Before
@@ -90,74 +88,73 @@ function d() {
       case 4:
 ```
 
+在解除混淆后，我们可以清晰的看到opcode和handler的对应关系。
 
-After deobfuscation, we can see that all the opcodes clearly map to their handlers.
+### 2) VM的基础功能
+通过对handlers的分析，我们可以找出变量和函数的意义和作用。
 
-### 2) Infrastructures Of VM
-By analyzing the code of handlers, we can figure out what the variables and functions are for.
+| Var | New Name        | Desc                                                 |
+| --- | --------------- |------------------------------------------------------|
+| o   | code            | 字节码流                                                 |
+| i   | hasVArgs        | 函数是否使用 vargs (arguments).                            |
+| u   | exceptionScopes | 对于异常块的描述 (try/catch/finalizer).                      |
+| s   | memory          | 虚拟内存. \[0\] 是它的父函数, \[1\] 是vargs. \[2\] 是第一个参数，以此类推. |
+| c   | ins             | this 变量.                                             |
+| a   | ip              | 指令指针                                                 |
+| f   | interType       | 中断类型. (返回, 抛出异常, 异常中跳转)                              |
+| l   | interValue      | 中断值. (一个值或一个地址)                                      |
+| p   | sp              | 栈指针                                                  |
+| v   | stack           | 运行栈                                                  |
+| h   | callStack       | 调用栈                                                  |
+| V   | vmFunctionTable | 保存了运行时注册的VM函数，用于call指令中确定函数调用方式.                     |
 
-| Var | New Name        | Desc                                                                     |
-| --- | --------------- | ------------------------------------------------------------------------ |
-| o   | code            | Bytecode stream                                                          |
-| i   | hasVArgs        | Whether the function uses vargs (arguments).                             |
-| u   | exceptionScopes | Describe the range of exception scopes (try/catch/finalizer).            |
-| s   | memory          | Memory. \[0\] is enclosure, \[1\] is vargs. \[2\] is start of arguments. |
-| c   | ins             | Instance (this).                                                         |
-| a   | ip              | Instruction-Pointer                                                      |
-| f   | interType       | Type of interruption. (return, throw, resume)                            |
-| l   | interValue      | Value of interruption. (value or next IP)                                |
-| p   | sp              | Stack-Pointer                                                            |
-| v   | stack           | Stack                                                                    |
-| h   | callStack       | Call stack frames.                                                       |
-| V   | vmFunctionTable | The container manages VM functions.                                      |
+| Fn  | New Name              | Desc                           |
+| --- | --------------------- |--------------------------------|
+| J   | CallVMFunctionByIndex | 调用一个VM函数，如果是首次，则需要解密字节码流和字符串表. |
+| D   | SetVMFunction         | 注册VM函数.                        |
+| X   | CallVMFunction        | 调用VM函数.                        |
+| d   | FetchAndExecute       | 取码-执行主循环函数.                    |
+| y   | HandleInterruption    | 处理中断.                          |
+### 3) 操作码(Opcode)分类
 
-| Fn  | New Name              | Desc                                                                 |
-| --- | --------------------- | -------------------------------------------------------------------- |
-| J   | CallVMFunctionByIndex | Call VM function and decrypt the bytecode and string-table at first. |
-| D   | SetVMFunction         | Update variable of vmFunctionTable at runtime.                       |
-| X   | CallVMFunction        |                                                                      |
-| d   | FetchAndExecute       | The main loop.                                                       |
-| y   | HandleInterruption    | Handle the various interruptions.                                    |
-### 3) Opcode Classes
+操作码大致分为5种。
+#### a) 控制流操作 
+更改控制流，修改IP变量值
+例如 Call(0) / JMP(53)
+有一些特殊的控制流指令，会在特定分支上保持运行栈的状态，比如 17 和 23.
 
-There are five classes of opcodes.
-#### a) Control-Flow Operations 
-Change the control, modify the IP directly.
-e.g. Call(0) / JMP(53)
-There are special jump opcodes that preserve stack state on certain branch, such as 17 and 23.
-
-#### b) Arithmetic / Bitwise / Comparison Operations
-Pop two values from the stack for binary expression, or one for unary expression, compute the result and push it back onto stack.
+#### b) 算数 / 位操作 / 比较指令
+从运行栈中弹出两个或一个操作数，用于二元和一元操作，然后将结果压入栈中。
 
 e.g. push(pop() + pop())
 
-#### c) Object Operations
-Store a value into object's property, or load a value from an object's property. These opcodes usually has two or three operands: the object, the property, and the value. Some special opcodes operate on the properties of `globalThis`.
+#### c) 对象操作
+从Object.property获取值，或者将一个值保存到Object.property中，通常来讲包含2个或3个操作数，object，property和value。有一些特殊操作码直接访问`globalThis`。
 
 e.g. pop()\[pop()\] = pop(), push(pop()\[pop()\]), push(pop()\[pop()\]++)
 
-#### d) Stack Operations
-Push a value onto the stack, duplicate the top of stack, or pop the top value. Such as push(this), push(null), push(imm).
+#### d) 栈操作
+压入、复制、弹出等操作。 例如：push(this), push(null), push(imm).
 
-#### e) Other Operations
-For-in loop adapter, get memory reference, etc.
+#### e) 其他操作
+for-in循环操作，mem访问操作等。
 
-### 4) Write a decompiler
-With all this information, we can write a decompiler for this VM to translate all instructions into an intermediate representation (IR) and build the control flow graph (CFG), I previously wrote a framework to cover this, it provides IR instructions compatible with ES5, CFG objects including Function and BasicBlock, an optimization pipeline, and analysis passes.
+### 4) 编写反编译器
+有了以上信息，我们可以为此VM编写一个反编译器，将所有的指令翻译为IR指令，并且构建控制流（CFG）。我此前写过一个框架专门处理此事，它提供了兼容ES5的IR指令，CFG结构对象如基本块和函数，还包含优化管线以及分析Pass等。
 
-For brevity, here is a high-level workflow: 
-- Scan all the bytecode, process each opcode to determine the correct instructions, insert them into BasicBlocks, and construct the CFG by handling control-flow operations.
-- Construct an SSA-form IR, demote certain registers to memory.
-- Run optimization pipeline, such as `SpareConditionalConstantPropagation`.
-- Destruct SSA-form IR and perform register allocation.
-- Generate highly readable JS source code.
+这是它大致的工作流程：
+- 扫描所有的字节码，处理每个opcode，将其发射为正确的IR指令，插入到基本块中，并在处理控制流操作的时候，构建控制流图。
+- 构建SSA（静态单复制）IR，并提升一些虚拟机存器到内存中，用于后续优化。
+- 执行优化管线，如`稀疏条件拷贝传播`，`死代码消除`等等。
+- 解构SSA IR，并为虚拟机存起分配变量。
+- 生成高可读的JS代码。
 
-This is a demo of the results.
+这里是一个结果展示：
 CFG
 ![CFG](images/Pasted%20image%2020251224124929.png)
 
 
-Source Code:
+生成的源代码:
 ```js
 function fn_310(a_0, a_1) {  
   // BB: 0  
@@ -231,11 +228,10 @@ function fn_310(a_0, a_1) {
 }
 ```
 
-### 5) Debug
-Now we have yet another `bdms.js`, but without VM protection. I named it with "bdms_novmp.js".
-We can override certain contents in Chrome, enable this at DevTool → Sources → Overrides.
+### 5) 调试
+现在我们有了另外一个去掉了VM保护的`bdms.js`，我将其命名为`bdms_novmp.js`，我们可以在Chrome中替换指定文件，在DevTool → Sources → Overrides中开启它。
 
-By searching the text `a_bogus` in `bdms.js`, we found the following code at line 19340:
+在`bdms.js`中搜索字符串`a_bogus`，我们在19340行发现如下代码：
 ```js
 if (!v_3.searchParams.has('a_bogus')) {
   pr()
@@ -243,7 +239,7 @@ if (!v_3.searchParams.has('a_bogus')) {
 }
 ```
 
-Lookup function `m_853`.
+查看 `m_853`.
 ```js
 m_853 = function fn_103(a_0, a_1, a_2) {  
   // BB: 0  
@@ -271,7 +267,7 @@ m_853 = function fn_103(a_0, a_1, a_2) {
 }
 ```
 
-The function finally calls `cr`. Let's inspect it. 
+该方法最后调用了`cr`，让我们检查它。
 ```js
 cr = function fn_150(a_0, a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8) {  
   // BB: 0  
@@ -300,14 +296,18 @@ cr = function fn_150(a_0, a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8) {
 }
 ```
 
-`cr` performs significant calculations and data assembly. Now we just need to set a breakpoint at start of `cr` and debug it step by step to collect all the information we need.
+`cr`进行了大量的运算和数据组装工作。我们只需要在入口处下断点，并进行单步调试，我们就能获取到所有我们想要的信息。
 
-Debug Window
+调试窗口：
 ![DebugWindow](images/Pasted%20image%2020251224141201.png)
 
 
-### 6) Result
-`bdms.js` mainly relies on RC4 and Base64, as well as the SM3 algorithm. The first two are custom-modified variants. These algorithms are used in the generation of the `a_bogus` parameter, during which a significant amount of browser fingerprint data and time-related parameters are collected. 
+### 6) 结论
+`bdms.js` 主要使用RC4和Base64还有SM3算法进行数据加密和编码，前两个都被进行了特化，并非标准的算法，但算法框架并没有更改。这三个算法同时被用于计算`a_bogus`参数，期间还收集了许多浏览器的指纹信息以及时间相关的参数。
+
+我使用Python3重写了该算法，文件`bdms.py`可以计算`a_bogus`参数，并在`bd_client.py`中测试它。
+
+以下是三个算法的源代码提取，他们可以直接运行在Node中。
 
 ```js
 RC4Like = function fn_280(a_0, a_1) {  
@@ -503,6 +503,6 @@ SM3 = function () {
 }();
 ```
 
-## Disscussion
+## 讨论
 
 Discord: https://discord.gg/EqUUKEyp
