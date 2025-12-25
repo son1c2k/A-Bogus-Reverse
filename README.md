@@ -309,197 +309,205 @@ Debug Window
 ### 6) Result
 `bdms.js` mainly relies on RC4 and Base64, as well as the SM3 algorithm. The first two are custom-modified variants. These algorithms are used in the generation of the `a_bogus` parameter, during which a significant amount of browser fingerprint data and time-related parameters are collected. 
 
+I implemented the `a_bugos` generating algorithm in Node (`abogus.js`) and validated it with `test.js`.
+
+Test result:
+![Result](images/ScreenShot_2025-12-25_101110_481.png)
+
+There are three algorithms in `bdms.js` that are used by `cr`:
+
 ```js
-RC4Like = function fn_280(a_0, a_1) {  
+RC4Like = function fn_280(a_0, a_1) {
   // BB: 0  
-  var v_0, v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8, v_9, v_10;  
-  v_0 = [];  
-  v_1 = 0;  
+  var v_0, v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8, v_9, v_10;
+  v_0 = [];
+  v_1 = 0;
   // BB: 20  
-  while (true) {  
+  while (true) {
     // BB: 20  
     if (!(v_1 < 256)) // BB: 48  
-      break;  
+      break;
     // BB: 28  
-    v_0[255 - v_1] = v_1;  
-    v_1 = v_1 + 1;  
+    v_0[255 - v_1] = v_1;
+    v_1 = v_1 + 1;
     // BB: 20  
-    continue;  
-  }  
+    continue;
+  }
   // BB: 48  
-  v_2 = 0;  
-  v_3 = 0;  
+  v_2 = 0;
+  v_3 = 0;
   // BB: 53  
-  while (true) {  
+  while (true) {
     // BB: 53  
     if (!(v_3 < 256)) // BB: 141  
-      break;  
+      break;
     // BB: 61  
-    v_10 = (v_2 * v_0[v_3] + v_2 + a_0.charCodeAt(v_3 % a_0.length)) % 256;  
-    v_8 = v_0[v_3];  
-    v_0[v_3] = v_0[v_10];  
-    v_0[v_10] = v_8;  
-    v_3 = v_3 + 1;  
-    v_2 = v_10;  
+    v_10 = (v_2 * v_0[v_3] + v_2 + a_0.charCodeAt(v_3 % a_0.length)) % 256;
+    v_8 = v_0[v_3];
+    v_0[v_3] = v_0[v_10];
+    v_0[v_10] = v_8;
+    v_3 = v_3 + 1;
+    v_2 = v_10;
     // BB: 53  
-    continue;  
-  }  
+    continue;
+  }
   // BB: 141  
-  v_4 = 0;  
-  v_5 = 0;  
-  v_6 = 0;  
-  v_7 = '';  
+  v_4 = 0;
+  v_5 = 0;
+  v_6 = 0;
+  v_7 = '';
   // BB: 156  
-  while (true) {  
+  while (true) {
     // BB: 156  
     if (!(v_5 < a_1.length)) // BB: 287  
-      return v_7;  
+      return v_7;
     // BB: 167  
-    v_8 = (v_4 + 1) % 256;  
-    v_9 = (v_6 + v_0[v_8]) % 256;  
-    v_10 = v_0[v_8];  
-    v_0[v_8] = v_0[v_9];  
-    v_0[v_9] = v_10;  
-    v_10 = String.fromCharCode(a_1.charCodeAt(v_5) ^ v_0[(v_0[v_8] + v_0[v_9]) % 256]);  
-    v_7 = v_7 + v_10;  
-    v_5 = v_5 + 1;  
-    v_4 = v_8;  
-    v_6 = v_9;  
+    v_8 = (v_4 + 1) % 256;
+    v_9 = (v_6 + v_0[v_8]) % 256;
+    v_10 = v_0[v_8];
+    v_0[v_8] = v_0[v_9];
+    v_0[v_9] = v_10;
+    v_10 = String.fromCharCode(a_1.charCodeAt(v_5) ^ v_0[(v_0[v_8] + v_0[v_9]) % 256]);
+    v_7 = v_7 + v_10;
+    v_5 = v_5 + 1;
+    v_4 = v_8;
+    v_6 = v_9;
     // BB: 156  
-    continue;  
-  }  
+    continue;
+  }
 };
 
-Base64Like = function fn_130(a_0, a_1) {  
+Base64Like = function fn_130(a_0, a_1) {
   // BB: 0  
-  var v_0, v_1, v_2, v_3, v_4, v_5, v_6, v_7;  
-  v_0 = {};  
-  v_0.s0 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';  
-  v_0.s1 = 'Dkdpgh4ZKsQB80/Mfvw36XI1R25+WUAlEi7NLboqYTOPuzmFjJnryx9HVGcaStCe=';  
-  v_0.s2 = 'Dkdpgh4ZKsQB80/Mfvw36XI1R25-WUAlEi7NLboqYTOPuzmFjJnryx9HVGcaStCe=';  
-  v_0.s3 = 'ckdp1h4ZKsUB80/Mfvw36XIgR25+WQAlEi7NLboqYTOPuzmFjJnryx9HVGDaStCe';  
-  v_0.s4 = 'Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe';  
-  v_1 = v_0[a_1];  
-  v_0 = '';  
-  v_2 = 0;  
+  var v_0, v_1, v_2, v_3, v_4, v_5, v_6, v_7;
+  v_0 = {};
+  v_0.s0 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  v_0.s1 = 'Dkdpgh4ZKsQB80/Mfvw36XI1R25+WUAlEi7NLboqYTOPuzmFjJnryx9HVGcaStCe=';
+  v_0.s2 = 'Dkdpgh4ZKsQB80/Mfvw36XI1R25-WUAlEi7NLboqYTOPuzmFjJnryx9HVGcaStCe=';
+  v_0.s3 = 'ckdp1h4ZKsUB80/Mfvw36XIgR25+WQAlEi7NLboqYTOPuzmFjJnryx9HVGDaStCe';
+  v_0.s4 = 'Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe';
+  v_1 = v_0[a_1];
+  v_0 = '';
+  v_2 = 0;
   // BB: 64  
-  while (true) {  
+  while (true) {
     // BB: 64  
     if (!(a_0.length >= v_2 + 3)) // BB: 237  
-      break;  
+      break;
     // BB: 78  
-    v_5 = v_2 + 1;  
-    v_4 = v_5 + 1;  
-    v_7 = (a_0.charCodeAt(v_2) & 255) << 16 | (a_0.charCodeAt(v_5) & 255) << 8;  
-    v_2 = v_4 + 1;  
-    v_5 = v_7 | a_0.charCodeAt(v_4) & 255;  
-    v_7 = v_0 + v_1.charAt((v_5 & 16515072) >> 18) + v_1.charAt((v_5 & 258048) >> 12);  
-    v_0 = v_7 + v_1.charAt((v_5 & 4032) >> 6) + v_1.charAt(v_5 & 63);  
+    v_5 = v_2 + 1;
+    v_4 = v_5 + 1;
+    v_7 = (a_0.charCodeAt(v_2) & 255) << 16 | (a_0.charCodeAt(v_5) & 255) << 8;
+    v_2 = v_4 + 1;
+    v_5 = v_7 | a_0.charCodeAt(v_4) & 255;
+    v_7 = v_0 + v_1.charAt((v_5 & 16515072) >> 18) + v_1.charAt((v_5 & 258048) >> 12);
+    v_0 = v_7 + v_1.charAt((v_5 & 4032) >> 6) + v_1.charAt(v_5 & 63);
     // BB: 64  
-    continue;  
-  }  
+    continue;
+  }
   // BB: 237  
-  if (a_0.length - v_2 > 0) {  
+  if (a_0.length - v_2 > 0) {
     // BB: 251  
-    v_4 = v_2 + 1;  
-    v_5 = (a_0.charCodeAt(v_2) & 255) << 16 | (a_0.length > v_4 ? (a_0.charCodeAt(v_4) & 255) << 8 : 0);  
-    v_6 = v_0 + v_1.charAt((v_5 & 16515072) >> 18) + v_1.charAt((v_5 & 258048) >> 12);  
-    v_7 = a_0.length > v_4 ? v_1.charAt((v_5 & 4032) >> 6) : '=';  
-    v_3 = v_6 + v_7 + '=';  
-  } else {  
+    v_4 = v_2 + 1;
+    v_5 = (a_0.charCodeAt(v_2) & 255) << 16 | (a_0.length > v_4 ? (a_0.charCodeAt(v_4) & 255) << 8 : 0);
+    v_6 = v_0 + v_1.charAt((v_5 & 16515072) >> 18) + v_1.charAt((v_5 & 258048) >> 12);
+    v_7 = a_0.length > v_4 ? v_1.charAt((v_5 & 4032) >> 6) : '=';
+    v_3 = v_6 + v_7 + '=';
+  } else {
     // BB: 237_to_411_split1  
-    v_3 = v_0;  
-  }  
+    v_3 = v_0;
+  }
   // BB: 411  
-  return v_3;  
+  return v_3;
 };
 
-SM3 = function () {  
-  function t() {  
-    if (function (t, r) {  
-      if (!(t instanceof r)) throw new TypeError("Cannot call a class as a function");  
-    }(this, t), !(this instanceof t)) return new t();  
-    this.reg = new Array(8), this.chunk = [], this.size = 0, this.reset();  
-  }  
-  return function (t, r, e) {  
-    r && ur(t.prototype, r), e && ur(t, e), Object.defineProperty(t, "prototype", {  
-      writable: !1  
-    });  
-  }(t, [{  
-    key: "reset",  
-    value: function () {  
-      this.reg[0] = 1937774191, this.reg[1] = 1226093241, this.reg[2] = 388252375, this.reg[3] = 3666478592, this.reg[4] = 2842636476, this.reg[5] = 372324522, this.reg[6] = 3817729613, this.reg[7] = 2969243214, this.chunk = [], this.size = 0;  
-    }  
-  }, {  
-    key: "write",  
-    value: function (t) {  
-      var r = "string" == typeof t ? function (t) {  
-        var r = encodeURIComponent(t).replace(/%([0-9A-F]{2})/g, function (t, r) {  
-            return String.fromCharCode("0x" + r);  
-          }),  
-          e = new Array(r.length);  
-        return Array.prototype.forEach.call(r, function (t, r) {  
-          e[r] = t.charCodeAt(0);  
-        }), e;  
-      }(t) : t;  
-      this.size += r.length;  
-      var e = 64 - this.chunk.length;  
-      if (r.length < e) this.chunk = this.chunk.concat(r);else for (this.chunk = this.chunk.concat(r.slice(0, e)); this.chunk.length >= 64;) this._compress(this.chunk), e < r.length ? this.chunk = r.slice(e, Math.min(e + 64, r.length)) : this.chunk = [], e += 64;  
-    }  
-  }, {  
-    key: "sum",  
-    value: function (t, r) {  
-      t && (this.reset(), this.write(t)), this._fill();  
-      for (var e = 0; e < this.chunk.length; e += 64) this._compress(this.chunk.slice(e, e + 64));  
-      var n,  
-        o,  
-        i,  
-        u = null;  
-      if ("hex" == r) {  
-        u = "";  
-        for (e = 0; e < 8; e++) u += (n = this.reg[e].toString(16), o = 8, i = "0", n.length >= o ? n : i.repeat(o - n.length) + n);  
-      } else for (u = new Array(32), e = 0; e < 8; e++) {  
-        var s = this.reg[e];  
-        u[4 * e + 3] = (255 & s) >>> 0, s >>>= 8, u[4 * e + 2] = (255 & s) >>> 0, s >>>= 8, u[4 * e + 1] = (255 & s) >>> 0, s >>>= 8, u[4 * e] = (255 & s) >>> 0;  
-      }  
-      return this.reset(), u;  
-    }  
-  }, {  
-    key: "_compress",  
-    value: function (t) {  
-      if (t < 64) console.error("compress error: not enough data");else {  
-        for (var r = function (t) {  
-            for (var r = new Array(132), e = 0; e < 16; e++) r[e] = t[4 * e] << 24, r[e] |= t[4 * e + 1] << 16, r[e] |= t[4 * e + 2] << 8, r[e] |= t[4 * e + 3], r[e] >>>= 0;  
-            for (var n = 16; n < 68; n++) {  
-              var o = r[n - 16] ^ r[n - 9] ^ dr(r[n - 3], 15);  
-              o = o ^ dr(o, 15) ^ dr(o, 23), r[n] = (o ^ dr(r[n - 13], 7) ^ r[n - 6]) >>> 0;  
-            }  
-            for (n = 0; n < 64; n++) r[n + 68] = (r[n] ^ r[n + 4]) >>> 0;  
-            return r;  
-          }(t), e = this.reg.slice(0), n = 0; n < 64; n++) {  
-          var o = dr(e[0], 12) + e[4] + dr(yr(n), n),  
-            i = ((o = dr(o = (4294967295 & o) >>> 0, 7)) ^ dr(e[0], 12)) >>> 0,  
-            u = br(n, e[0], e[1], e[2]);  
-          u = (4294967295 & (u = u + e[3] + i + r[n + 68])) >>> 0;  
-          var s = mr(n, e[4], e[5], e[6]);  
-          s = (4294967295 & (s = s + e[7] + o + r[n])) >>> 0, e[3] = e[2], e[2] = dr(e[1], 9), e[1] = e[0], e[0] = u, e[7] = e[6], e[6] = dr(e[5], 19), e[5] = e[4], e[4] = (s ^ dr(s, 9) ^ dr(s, 17)) >>> 0;  
-        }  
-        for (var c = 0; c < 8; c++) this.reg[c] = (this.reg[c] ^ e[c]) >>> 0;  
-      }  
-    }  
-  }, {  
-    key: "_fill",  
-    value: function () {  
-      var t = 8 * this.size,  
-        r = this.chunk.push(128) % 64;  
-      for (64 - r < 8 && (r -= 64); r < 56; r++) this.chunk.push(0);  
-      for (var e = 0; e < 4; e++) {  
-        var n = Math.floor(t / 4294967296);  
-        this.chunk.push(n >>> 8 * (3 - e) & 255);  
-      }  
-      for (e = 0; e < 4; e++) this.chunk.push(t >>> 8 * (3 - e) & 255);  
-    }  
-  }]), t;  
+Deps = function () {
+  function t() {
+    if (function (t, r) {
+      if (!(t instanceof r)) throw new TypeError("Cannot call a class as a function");
+    }(this, t), !(this instanceof t)) return new t();
+    this.reg = new Array(8), this.chunk = [], this.size = 0, this.reset();
+  }
+
+  return function (t, r, e) {
+    r && ur(t.prototype, r), e && ur(t, e), Object.defineProperty(t, "prototype", {
+      writable: !1
+    });
+  }(t, [{
+    key: "reset",
+    value: function () {
+      this.reg[0] = 1937774191, this.reg[1] = 1226093241, this.reg[2] = 388252375, this.reg[3] = 3666478592, this.reg[4] = 2842636476, this.reg[5] = 372324522, this.reg[6] = 3817729613, this.reg[7] = 2969243214, this.chunk = [], this.size = 0;
+    }
+  }, {
+    key: "write",
+    value: function (t) {
+      var r = "string" == typeof t ? function (t) {
+        var r = encodeURIComponent(t).replace(/%([0-9A-F]{2})/g, function (t, r) {
+            return String.fromCharCode("0x" + r);
+          }),
+          e = new Array(r.length);
+        return Array.prototype.forEach.call(r, function (t, r) {
+          e[r] = t.charCodeAt(0);
+        }), e;
+      }(t) : t;
+      this.size += r.length;
+      var e = 64 - this.chunk.length;
+      if (r.length < e) this.chunk = this.chunk.concat(r); else for (this.chunk = this.chunk.concat(r.slice(0, e)); this.chunk.length >= 64;) this._compress(this.chunk), e < r.length ? this.chunk = r.slice(e, Math.min(e + 64, r.length)) : this.chunk = [], e += 64;
+    }
+  }, {
+    key: "sum",
+    value: function (t, r) {
+      t && (this.reset(), this.write(t)), this._fill();
+      for (var e = 0; e < this.chunk.length; e += 64) this._compress(this.chunk.slice(e, e + 64));
+      var n,
+        o,
+        i,
+        u = null;
+      if ("hex" == r) {
+        u = "";
+        for (e = 0; e < 8; e++) u += (n = this.reg[e].toString(16), o = 8, i = "0", n.length >= o ? n : i.repeat(o - n.length) + n);
+      } else for (u = new Array(32), e = 0; e < 8; e++) {
+        var s = this.reg[e];
+        u[4 * e + 3] = (255 & s) >>> 0, s >>>= 8, u[4 * e + 2] = (255 & s) >>> 0, s >>>= 8, u[4 * e + 1] = (255 & s) >>> 0, s >>>= 8, u[4 * e] = (255 & s) >>> 0;
+      }
+      return this.reset(), u;
+    }
+  }, {
+    key: "_compress",
+    value: function (t) {
+      if (t < 64) console.error("compress error: not enough data"); else {
+        for (var r = function (t) {
+          for (var r = new Array(132), e = 0; e < 16; e++) r[e] = t[4 * e] << 24, r[e] |= t[4 * e + 1] << 16, r[e] |= t[4 * e + 2] << 8, r[e] |= t[4 * e + 3], r[e] >>>= 0;
+          for (var n = 16; n < 68; n++) {
+            var o = r[n - 16] ^ r[n - 9] ^ dr(r[n - 3], 15);
+            o = o ^ dr(o, 15) ^ dr(o, 23), r[n] = (o ^ dr(r[n - 13], 7) ^ r[n - 6]) >>> 0;
+          }
+          for (n = 0; n < 64; n++) r[n + 68] = (r[n] ^ r[n + 4]) >>> 0;
+          return r;
+        }(t), e = this.reg.slice(0), n = 0; n < 64; n++) {
+          var o = dr(e[0], 12) + e[4] + dr(yr(n), n),
+            i = ((o = dr(o = (4294967295 & o) >>> 0, 7)) ^ dr(e[0], 12)) >>> 0,
+            u = br(n, e[0], e[1], e[2]);
+          u = (4294967295 & (u = u + e[3] + i + r[n + 68])) >>> 0;
+          var s = mr(n, e[4], e[5], e[6]);
+          s = (4294967295 & (s = s + e[7] + o + r[n])) >>> 0, e[3] = e[2], e[2] = dr(e[1], 9), e[1] = e[0], e[0] = u, e[7] = e[6], e[6] = dr(e[5], 19), e[5] = e[4], e[4] = (s ^ dr(s, 9) ^ dr(s, 17)) >>> 0;
+        }
+        for (var c = 0; c < 8; c++) this.reg[c] = (this.reg[c] ^ e[c]) >>> 0;
+      }
+    }
+  }, {
+    key: "_fill",
+    value: function () {
+      var t = 8 * this.size,
+        r = this.chunk.push(128) % 64;
+      for (64 - r < 8 && (r -= 64); r < 56; r++) this.chunk.push(0);
+      for (var e = 0; e < 4; e++) {
+        var n = Math.floor(t / 4294967296);
+        this.chunk.push(n >>> 8 * (3 - e) & 255);
+      }
+      for (e = 0; e < 4; e++) this.chunk.push(t >>> 8 * (3 - e) & 255);
+    }
+  }]), t;
 }();
 ```
 
