@@ -2,16 +2,16 @@ import {BDMS} from "./abogus.js";
 
 async function main() {
   const ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36";
-  const msToken = "KRnBGjDarzKjGOyPq9akDfcTq6hDOsnNZwb51D4bVruRZ7X6ux4UEoY0bFVAV7CW6zA08IqepLqoraX9WYlePzoyIcybXAGKvP58HHrUrCPylYR9LStIxgvZSkYofB6s4F5hM0mhm6ZgP3O-GPTST5VZtOYU6vJDFzs=";
-  const pageId = 11881;
-  const appId = 6383;
+  const msToken = "!!replace_this_with_yours!!";
+  const pageId = 9999; // "!!replace_this_with_yours!!";
+  const appId = 9999; // "!!replace_this_with_yours!!";
   const webId = "85868838718989776235";
   const searchId = "202512240935438BD18D1C5692BD5973E6";
-  const ttwid = "1%7C_Qr7i1g2-_pLN13cL2L8_A-P_iFVcChEvSBuMe63FpE%7C1766538389%7C30f948b5eaa694656b15f5cfbd7d9f37c391e4a4d659cc6524422e8473eefb79";
+  const ttwid = "!!replace_this_with_yours!!";
   const headers = {
     "User-Agent": ua,
     'Cookie': `ttwid=${ttwid}`,
-    'Referer': 'https://www.douyin.com/search/OMFG'
+    'Referer': '!!replace_this_with_yours!!'
   };
 
   const queryParams = new URLSearchParams({
@@ -78,7 +78,7 @@ async function main() {
   console.log(aBogus);
   queryParams.append("a_bogus", aBogus);
 
-  const url = `https://www.douyin.com/aweme/v1/web/general/search/single/?${queryParams.toString()}`;
+  const url = `https://www.!!replace_this_with_yours!!.com/aweme/v1/web/general/search/single/?${queryParams.toString()}`;
 
   const res = await fetch(url, {
     method: 'GET',
