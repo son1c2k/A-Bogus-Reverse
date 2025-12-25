@@ -1,3 +1,7 @@
+### English | [中文](https://github.com/son1c2k/A-Bogus-Reverse/blob/main/README_ZH.md)
+
+---
+
 ### 0) Intro
 `bdms.js` is a bot defender like most others, it's protected by virtualization (VMP). It's mainly responsible for computing a parameter named `a_bogus` and automatically appending it to HTTP requests. 
 
