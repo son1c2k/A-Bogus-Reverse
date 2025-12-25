@@ -425,7 +425,7 @@ Base64Like = function fn_130(a_0, a_1) {
   return v_3;
 };
 
-Deps = function () {
+SM3 = function () {
   function t() {
     if (function (t, r) {
       if (!(t instanceof r)) throw new TypeError("Cannot call a class as a function");
